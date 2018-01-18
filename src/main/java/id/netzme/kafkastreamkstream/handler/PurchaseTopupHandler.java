@@ -18,42 +18,49 @@ public class PurchaseTopupHandler {
             REQUEST TOPUP TO SERVER
              */
             logger.debug("        --> Request Server : " + value.toString());
-            PurchaseImpl purchase = new PurchaseImpl();
-            PurchaseTopup purchaseTopupReply = purchase.processPurchaseTopup(value);
+            PurchaseTopup purchaseTopupReply = processTopupToServer(value);
             logger.debug("        <-- Reply Server   : " + purchaseTopupReply.toString());
 
             /*
             BUILD MESSAGE REPLY
              */
-            PurchaseTopup purchaseTopupOutgoing = PurchaseTopup.builder(purchaseTopupReply).build();
-            purchaseTopupOutgoing.setRespDesc(CommonHelper.getResponseDesc(purchaseTopupReply.getRespCode()));
+            PurchaseTopup purchaseTopupOutgoing = processBuildMsgReply(purchaseTopupReply);
             logger.debug("     <-- Outgoing Message  : " + purchaseTopupOutgoing.toString());
 
             /*
             INSERT DATABASE
              */
-            upd.insertPurchaseTopupLog(CommonHelper.getJsonPurchaseTopup(value),
-                    CommonHelper.getJsonPurchaseTopup(value),
-                    CommonHelper.getJsonPurchaseTopup(purchaseTopupReply),
-                    CommonHelper.getJsonPurchaseTopup(purchaseTopupOutgoing));
+            processInsertDatabase(value,value,purchaseTopupReply,purchaseTopupOutgoing);
+
             return purchaseTopupOutgoing;
         }catch (Exception e){
-            System.out.println("SOMETHING WRONG....!!");
-            System.out.println(CommonHelper.getStackTraceAsString(e));
+            logger.error("SOMETHING WRONG....!!");
+            logger.error(CommonHelper.getStackTraceAsString(e));
 
-            PurchaseTopup.Builder builder = PurchaseTopup.builder(value);
-            builder.respCode(6);
-            builder.respDesc(CommonHelper.getResponseDesc(6));
-            PurchaseTopup updated = builder.build();
+            value.setRespCode(6);
+            PurchaseTopup updated = processBuildMsgReply(value);
             logger.debug("     <-- Outgoing Message  : " + updated.toString());
 
-            upd.insertPurchaseTopupLog(CommonHelper.getJsonPurchaseTopup(value),
-                    CommonHelper.getJsonPurchaseTopup(value),
-                    null,
-                    CommonHelper.getJsonPurchaseTopup(updated));
+            processInsertDatabase(value,value,null,updated);
             return updated;
         }
+    }
 
+    private PurchaseTopup processTopupToServer(PurchaseTopup value) throws Exception{
+        PurchaseImpl purchase = new PurchaseImpl();
+        return purchase.processPurchaseTopup(value);
+    }
 
+    private PurchaseTopup processBuildMsgReply(PurchaseTopup purchaseTopupReply) {
+        PurchaseTopup purchaseTopupOutgoing = PurchaseTopup.builder(purchaseTopupReply).build();
+        purchaseTopupOutgoing.setRespDesc(CommonHelper.getResponseDesc(purchaseTopupReply.getRespCode()));
+        return purchaseTopupOutgoing;
+    }
+
+    private int processInsertDatabase(PurchaseTopup incommingMsg, PurchaseTopup reqServerMsg, PurchaseTopup repServerMsg, PurchaseTopup outgoingMsg) {
+        return upd.insertPurchaseTopupLog(CommonHelper.getJsonPurchaseTopup(incommingMsg),
+                CommonHelper.getJsonPurchaseTopup(reqServerMsg),
+                CommonHelper.getJsonPurchaseTopup(repServerMsg),
+                CommonHelper.getJsonPurchaseTopup(outgoingMsg));
     }
 }
